@@ -30,9 +30,9 @@ THATS IT , YOUR PEGASUS MASTERNODE IS NOW RUNNING ON VPS. SIMPLY CONFIGURE YOUR 
 **Desktop wallet setup**
 After the MN is up and running, you need to configure the desktop wallet accordingly. Here are the steps for Windows Wallet
 
-1. Open the Hostinkey Wallet.
+1. Open the PEGASUS Wallet.
 2. Go to RECEIVE and create a New Address: MN1
-3. Send 10000 XHK to MN1.
+3. Send 1000 PEG to MN1.
 4. Wait for confirmations.
 5. Go to Tools -> "Debug console - Console"
 6. Type the following command: masternode outputs
@@ -45,7 +45,7 @@ After the MN is up and running, you need to configure the desktop wallet accordi
 • TxHash: First value from Step 6
 • Output index: Second value from Step 6 It can be 0 or 1
 8. SAVE and exit the Wallet.
-9. Open HOSTINKEY Wallet, go to Masternode Tab. If you tab is not shown, please enable it from: Settings - Options - Wallet - Show Masternodes Tab
+9. Open PEGASUS Wallet, go to Masternode Tab. If you tab is not shown, please enable it from: Settings - Options - Wallet - Show Masternodes Tab
 10. Click Update status to see your node. If it is not shown, close the wallet and start it again.
 11. Click Start All or Start Alias
 12. If then also not starting then click on >tools>debug console> Type: startmasternode alias false "name of your MN alias"
