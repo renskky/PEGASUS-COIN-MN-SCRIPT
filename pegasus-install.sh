@@ -22,12 +22,16 @@ NC='\033[0m'
 
 function download_node() {
   echo -e "Prepare to download ${GREEN}$COIN_NAME${NC}."
-  cd $TMP_FOLDER >/dev/null 2>&1
-  wget -q $COIN_TGZ
-  tar xvzf $COIN_ZIP -C $COIN_PATH >/dev/null 2>&1
+   cd $TMP_FOLDER
+  wget -q $COIN_REPO
   compile_error
-  cp $COIN_DAEMON $COIN_CLI $COIN_PATH >/dev/null 2>&1
-  cd - >/dev/null 2>&1
+  COIN_ZIP=$(echo $COIN_REPO | awk -F'/' '{print $NF}')
+  tar xvzf $COIN_ZIP >/dev/null 2>&1
+  compile_error
+  cp pegasus* /usr/local/bin
+  compile_error
+  strip $COIN_DAEMON $COIN_CLI
+  cd -
   rm -rf $TMP_FOLDER >/dev/null 2>&1
   clear
 }
