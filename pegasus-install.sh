@@ -19,6 +19,65 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m'
 
+function compile_error() {
+if [ "$?" -gt "0" ];
+ then
+  echo -e "${RED}Failed to compile $@. Please investigate.${NC}"
+  exit 1
+fi
+}
+
+
+function checks() {
+if [[ $(lsb_release -d) != *16.04* ]]; then
+  echo -e "${RED}You are not running Ubuntu 16.04. Installation is cancelled.${NC}"
+  exit 1
+fi
+
+if [[ $EUID -ne 0 ]]; then
+   echo -e "${RED}$0 must be run as root.${NC}"
+   exit 1
+fi
+
+if [ -n "$(pidof pegasus)" ]; then
+  echo -e "${GREEN}\c"
+  read -e -p "Pegasus is already running. Do you want to add another MN? [Y/N]" NEW_COIN
+  echo -e "{NC}"
+  clear
+else
+  NEW_CROP="new"
+fi
+}
+
+function prepare_system() {
+
+echo -e "Prepare the system to install Cropcoin master node."
+apt-get update >/dev/null 2>&1
+DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y -qq upgrade >/dev/null 2>&1
+apt install -y software-properties-common >/dev/null 2>&1
+echo -e "${GREEN}Adding bitcoin PPA repository"
+apt-add-repository -y ppa:bitcoin/bitcoin >/dev/null 2>&1
+echo -e "Installing required packages, it may take some time to finish.${NC}"
+apt-get update >/dev/null 2>&1
+apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" make software-properties-common \
+build-essential libtool autoconf libssl-dev libboost-dev libboost-chrono-dev libboost-filesystem-dev libboost-program-options-dev \
+libboost-system-dev libboost-test-dev libboost-thread-dev sudo automake git wget pwgen curl libdb4.8-dev bsdmainutils \
+libdb4.8++-dev libminiupnpc-dev libgmp3-dev ufw pwgen
+clear
+if [ "$?" -gt "0" ];
+  then
+    echo -e "${RED}Not all required packages were installed properly. Try to install them manually by running the following commands:${NC}\n"
+    echo "apt-get update"
+    echo "apt -y install software-properties-common"
+    echo "apt-add-repository -y ppa:bitcoin/bitcoin"
+    echo "apt-get update"
+    echo "apt install -y make build-essential libtool software-properties-common autoconf libssl-dev libboost-dev libboost-chrono-dev libboost-filesystem-dev \
+libboost-program-options-dev libboost-system-dev libboost-test-dev libboost-thread-dev sudo automake git pwgen curl libdb4.8-dev \
+bsdmainutils libdb4.8++-dev libminiupnpc-dev libgmp3-dev ufw"
+ exit 1
+fi
+
+clear
 
 function download_node() {
   echo -e "Prepare to download ${GREEN}$COIN_NAME${NC}."
@@ -71,6 +130,47 @@ EOF
     echo -e "less /var/log/syslog${NC}"
     exit 1
   fi
+}
+
+function ask_port() {
+DEFAULTCROPCOINPORT=17720
+read -p "CROPCOIN Port: " -i $DEFAULTCROPCOINPORT -e CROPCOINPORT
+: ${CROPCOINPORT:=$DEFAULTCROPCOINPORT}
+}
+
+function ask_user() {
+  DEFAULTCROPCOINUSER="cropcoin"
+  read -p "Cropcoin user: " -i $DEFAULTCROPCOINUSER -e CROPCOINUSER
+  : ${CROPCOINUSER:=$DEFAULTCROPCOINUSER}
+
+  if [ -z "$(getent passwd $CROPCOINUSER)" ]; then
+    useradd -m $CROPCOINUSER
+    USERPASS=$(tr -cd '[:alnum:]' < /dev/urandom | fold -w12 | head -n1)
+    echo "$CROPCOINUSER:$USERPASS" | chpasswd
+
+    CROPCOINHOME=$(sudo -H -u $CROPCOINUSER bash -c 'echo $HOME')
+    DEFAULTCROPCOINFOLDER="$CROPCOINHOME/.cropcoin"
+    read -p "Configuration folder: " -i $DEFAULTCROPCOINFOLDER -e CROPCOINFOLDER
+    : ${CROPCOINFOLDER:=$DEFAULTCROPCOINFOLDER}
+    mkdir -p $CROPCOINFOLDER
+    chown -R $CROPCOINUSER: $CROPCOINFOLDER >/dev/null
+  else
+    clear
+    echo -e "${RED}User exits. Please enter another username: ${NC}"
+    ask_user
+  fi
+}
+
+function check_port() {
+  declare -a PORTS
+  PORTS=($(netstat -tnlp | awk '/LISTEN/ {print $4}' | awk -F":" '{print $NF}' | sort | uniq | tr '\r\n'  ' '))
+  ask_port
+
+  while [[ ${PORTS[@]} =~ $CROPCOINPORT ]] || [[ ${PORTS[@]} =~ $[CROPCOINPORT+1] ]]; do
+    clear
+    echo -e "${RED}Port in use, please choose another port:${NF}"
+    ask_port
+  done
 }
 
 
@@ -259,13 +359,14 @@ function important_information() {
 }
 
 function setup_node() {
-  get_ip
+  ask_user
+  check_port
   create_config
   create_key
   update_config
   enable_firewall
+  systemd_pegasus
   important_information
-  configure_systemd
 }
 
 
@@ -273,6 +374,19 @@ function setup_node() {
 clear
 
 checks
-prepare_system
-download_node
-setup_node
+if [[ ("$NEW_CROP" == "y" || "$NEW_COIN" == "Y") ]]; then
+  setup_node
+  exit 0
+elif [[ "$NEW_COIN" == "new" ]]; then
+  prepare_system
+  ask_permission
+  if [[ "$VOL" == "YES" ]]; then
+    deploy_binaries
+  else
+    compile_pegasus
+  fi
+  setup_node
+else
+  echo -e "${GREEN}Cropcoind already running.${NC}"
+  exit 0
+fi
