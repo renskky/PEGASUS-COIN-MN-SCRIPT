@@ -374,7 +374,7 @@ function setup_node() {
 clear
 
 checks
-if [[ ("$NEW_CROP" == "y" || "$NEW_COIN" == "Y") ]]; then
+if [[ ("$NEW_COIN" == "y" || "$NEW_COIN" == "Y") ]]; then
   setup_node
   exit 0
 elif [[ "$NEW_COIN" == "new" ]]; then
@@ -384,7 +384,7 @@ elif [[ "$NEW_COIN" == "new" ]]; then
     deploy_binaries
   else
     compile_pegasus
-  echo -e "${GREEN}Cropcoind already running.${NC}"
+  echo -e "${GREEN}Pegasus already running.${NC}"
   exit 0
 fi
 setup_node
