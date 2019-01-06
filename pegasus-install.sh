@@ -384,9 +384,8 @@ elif [[ "$NEW_COIN" == "new" ]]; then
     deploy_binaries
   else
     compile_pegasus
-  fi
-  setup_node
 else
   echo -e "${GREEN}Cropcoind already running.${NC}"
   exit 0
 fi
+setup_node
